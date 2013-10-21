@@ -20,7 +20,7 @@ log_file = "black_cat_sightings.log"
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
-gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password: ")
+gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
 
 # send an initial sms
 if gmail_pw:
