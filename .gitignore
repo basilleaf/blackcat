@@ -1,0 +1,4 @@
+venv
+*.pyc
+secrets.py
+black_cat_sightings.log
