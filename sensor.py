@@ -13,7 +13,7 @@ from calibrate import calibrate
 from secrets import secrets
 
 resident_cat_variance_ratio = 1.5
-recalibrate_freq = 10  # minutes
+recalibrate_freq = 30  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
 
 log_file = "black_cat_sightings.log"
@@ -77,10 +77,17 @@ while True:
 
             # pick a creepy voice at random and scare a cat with it
             random.shuffle(voices)
+
+            # play a mac creepy mac voice
+            """
             voice, phrase = [v.strip() for v in voices[0].split('en_US    #')]
             msg = "say -r 340 -v %s %s " % (voice, scary_msg)
             system(msg)
             print(msg, file=f)
+            """
+
+            # play a wav file
+            system('afplay ~/GET_OUT_OF_HERE_CAT.wav')
 
             # log
             msg = "%s Black cat detected! - %s - %s" % (strftime("%X").strip(), str(reading).strip(), strftime("%a, %d %b %Y").strip())
@@ -97,8 +104,11 @@ while True:
             if t-time_last_calib > 60*recalibrate_freq:
                 base, variance, time_last_calib = calibrate(ser, f)
 
+            """
+            this is fail
             if int(reading) > (resident_cat_variance_ratio*base+variance):
                 print("resident cat? - " + str(reading) + ' - ' + time_str, file=f)
+            """
 
     except ValueError:
         print(reading, file=f)
