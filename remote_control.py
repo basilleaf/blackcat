@@ -11,7 +11,8 @@ f = open('status.txt')
 def hello():
     """Respond to incoming calls with a simple text message."""
 
-    text_command = request.values.get('Body', None)
+    text_command = request.values.get('Body', False)
+    text_command = str(text_command).strip().upper() if text_command else False
 
     resp = twilio.twiml.Response()
 
