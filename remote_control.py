@@ -10,7 +10,6 @@ app = Flask(__name__)
 aws_access_key_id = os.environ['aws_access_key_id']
 aws_secret_access_key = os.environ['aws_secret_access_key']
 aws_bucket_name = os.environ['aws_bucket_name']
-aws_url = os.environ['aws_url']
 
 @app.route("/", methods=['GET', 'POST'])
 def hello():
