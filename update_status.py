@@ -25,6 +25,6 @@ def update_status(status):
     key_name = 'status'
     bucket.delete_key(key_name)
     key = bucket.new_key(key_name)
-    key.set_contents_from_string(text_command)
+    key.set_contents_from_string(status)
     key.set_acl('public-read')
     return True
