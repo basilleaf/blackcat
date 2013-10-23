@@ -21,7 +21,8 @@ def hello():
 
     elif text_command:
         if text_command[0:3] == 'STA':
-            resp.message("Current Cat Detector status is: " + text_command)
+            status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
+            resp.message("Current Cat Detector status is: " + status)
         else:
             # write text command to s3
             update_status(text_command)
