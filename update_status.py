@@ -1,6 +1,5 @@
 import os
 import boto
-from secrets import secrets
 """
     updates status on remote s3 bucket
 
@@ -13,6 +12,7 @@ try:
     config = os.environ
 except KeyError:
     # we must be local
+    from secrets import secrets
     config = secrets
 
 aws_access_key_id = config['aws_access_key_id']
