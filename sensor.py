@@ -5,7 +5,6 @@ from os import system
 import random
 import getpass
 import serial
-import urllib2
 from time import strftime, mktime, sleep
 from datetime import datetime
 from fabric.contrib.console import confirm  # ux baby
@@ -31,12 +30,19 @@ if gmail_pw:
     last_sms = mktime(datetime.now().timetuple())
     print("ok that worked!")
 
+
+# if you want sms control...
+sms_msg = "if you want sms control, run this in another shell: \n python fetch_status.py"
+print(sms_msg)
+sleep(2)
+
 # connect to the Arduino's serial port
 try:
     ser = serial.Serial('/dev/tty.usbmodemfd121', 19200)
 except serial.serialutil.SerialException:
     if confirm("Please plug in the Arduino, say Y when that's done: "):
         ser = serial.Serial('/dev/tty.usbmodemfd121', 19200)
+
 
 # upload your script to the arduino
 if confirm("Now upload your sketch to the arduino, say Y ®: "):
@@ -54,7 +60,10 @@ base, variance, time_last_calib = calibrate(ser, f)
 first_reading = True
 status = 'ON'
 last_checked_status = mktime(datetime.now().timetuple())
+turned_off = False
+
 while True:
+
     reading = ser.readline()
 
     # debugging
@@ -62,19 +71,21 @@ while True:
 
     t = mktime(datetime.now().timetuple())
 
-    # check the remote server for status commands
-    if t-last_checked_status > 60:  # check status every minute
-        last_checked_status = mktime(datetime.now().timetuple())
-        status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
-        if status != 'ON':
-            if status[0:2] == 'CA':
-                # this means recalibrate now:
-                base, variance, time_last_calib = calibrate(ser, f)
-                update_status('ON')
-            elif status == 'OFF':
-                print(strftime("%X").strip() + " going off for 15 minutes")
-                sleep(15*60)  # sleep 15 minutes then continue
-                continue
+    status = open('status').readlines()[0]
+    if status != 'ON':
+        if status[0:2] == 'CA':
+            # this means recalibrate now:
+            base, variance, time_last_calib = calibrate(ser, f)
+            update_status('ON')
+        elif status == 'OFF':
+            print(strftime("%X").strip() + " going off for 15 minutes")
+            turned_off = True
+            sleep(15*60)  # sleep 15 minutes then continue
+            continue
+
+    if turned_off == True:
+        print("ok back on")
+        turned_off == False
 
 
     if first_reading:

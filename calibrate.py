@@ -8,6 +8,9 @@ def calibrate(ser, f):
     this fails around sunset and sunrise, is good at stable ambient lighting
     """
 
+    print("recalibrating..", file=f)
+    f.flush()
+
     # take 10 readings
     latest_readings = []
     for c in range(0,10):

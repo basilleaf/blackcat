@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import boto
 """
@@ -20,11 +21,19 @@ aws_secret_access_key = config['aws_secret_access_key']
 aws_bucket_name = config['aws_bucket_name']
 
 def update_status(status):
+
+    # update local status
+    f = open('status','w')
+    status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
+    print(status, file=f),
+    f.close()
+
+    # update status on s3
     s3 = boto.connect_s3(aws_access_key_id,aws_secret_access_key)
     bucket = s3.create_bucket(aws_bucket_name)
     key_name = 'status'
     bucket.delete_key(key_name)
     key = bucket.new_key(key_name)
     key.set_contents_from_string(status)
-    key.set_acl('public-read')
-    return True
+    if key.set_acl('public-read'):
+        return True
