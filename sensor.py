@@ -15,7 +15,7 @@ from update_status import update_status
 from secrets import secrets
 
 resident_cat_variance_ratio = 1.5
-recalibrate_freq = 30  # minutes
+recalibrate_freq = 20  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
 
 log_file = "black_cat_sightings.log"
@@ -74,6 +74,7 @@ while True:
                 print(strftime("%X").strip() + " going off for 15 minutes")
                 sleep(15*60)  # sleep 15 minutes then continue
                 continue
+
 
     if first_reading:
         first_reading = False

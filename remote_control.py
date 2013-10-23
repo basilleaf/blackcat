@@ -16,13 +16,16 @@ def hello():
 
     resp = twilio.twiml.Response()
 
-    if text_command and text_command not in ['ON','OFF','CAL','CALIBRATE','CALIB']:
+    if text_command and text_command not in ['ON','OFF','CAL','CALIBRATE','CALIB','STATUS']:
         resp.message("invalid command: " + text_command)
 
     elif text_command:
-        # write text command to s3
-        update_status(text_command)
-        resp.message("Cat Detector status changed to: " + text_command)
+        if text_command == 'STATUS':
+            resp.message("Current Cat Detector status is: " + text_command)
+        else:
+            # write text command to s3
+            update_status(text_command)
+            resp.message("Cat Detector status changed to: " + text_command)
 
     else:
         # no text_command, just try to get current status
