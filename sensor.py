@@ -64,6 +64,7 @@ while True:
 
     # check the remote server for status commands
     if t-last_checked_status > 60:  # check status every minute
+        last_checked_status = mktime(datetime.now().timetuple())
         status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
         if status != 'ON':
             if status[0:2] == 'CA':
