@@ -1,15 +1,12 @@
 from __future__ import print_function
 import os
-import boto
 import urllib2
+import boto
 from flask import Flask, request, redirect
 import twilio.twiml
+from update_status import update_status
 
 app = Flask(__name__)
-
-aws_access_key_id = os.environ['aws_access_key_id']
-aws_secret_access_key = os.environ['aws_secret_access_key']
-aws_bucket_name = os.environ['aws_bucket_name']
 
 @app.route("/", methods=['GET', 'POST'])
 def hello():
@@ -24,13 +21,7 @@ def hello():
 
     elif text_command:
         # write text command to s3
-        s3 = boto.connect_s3(aws_access_key_id,aws_secret_access_key)
-        bucket = s3.create_bucket(aws_bucket_name)
-        key_name = 'status'
-        bucket.delete_key(key_name)
-        key = bucket.new_key(key_name)
-        key.set_contents_from_string(text_command)
-        key.set_acl('public-read')
+        update_status(text_command)
         resp.message("Cat Detector status changed to: " + text_command)
 
     else:

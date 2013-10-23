@@ -5,11 +5,13 @@ from os import system
 import random
 import getpass
 import serial
+import urllib2
 from time import strftime, mktime, sleep
 from datetime import datetime
 from fabric.contrib.console import confirm  # ux baby
 from send_sms import send_sms
 from calibrate import calibrate
+from update_status import update_status
 from secrets import secrets
 
 resident_cat_variance_ratio = 1.5
@@ -50,15 +52,31 @@ base, variance, time_last_calib = calibrate(ser, f)
 
 # read the serial port for sensor readings:
 first_reading = True
+status = 'ON'
+last_checked_status = mktime(datetime.now().timetuple())
 while True:
     reading = ser.readline()
 
     # debugging
     # print(str(base) + ' ' + str(variance) + ' reading: ' + str(reading))
 
+    t = mktime(datetime.now().timetuple())
+
+    # check the remote server for status commands
+    if t-last_checked_status > 60:  # check status every minute
+        status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
+        if status != 'ON':
+            if status[0:2] == 'CA':
+                # this means recalibrate now:
+                base, variance, time_last_calib = calibrate(ser, f)
+                update_status('ON')
+            elif status == 'OFF':
+                print(strftime("%X").strip() + " going off for 15 minutes")
+                sleep(15*60)  # sleep 15 minutes then continue
+                continue
+
     if first_reading:
         first_reading = False
-        t = mktime(datetime.now().timetuple())
         time_str = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()
         print("hello, first reading: - " + reading + ' - ' + time_str)
         print("hello, first reading: " + reading + ' - ' + time_str, file=f)
@@ -70,10 +88,6 @@ while True:
 
         if int(reading) < (base-variance): # black cats always score lower than base
             # we haz a black cat!
-
-            # this stuff gets repeated because I didn't want to hold up the base/variance check.. speed!
-            t = mktime(datetime.now().timetuple())
-            time_str = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()
 
             # pick a creepy voice at random and scare a cat with it
             random.shuffle(voices)
@@ -94,8 +108,8 @@ while True:
             print(msg, file=f)
             f.flush()
 
-            # send sms - this script dies here if you change your gmail password, janky way to kill the script remotely
-            if gmail_pw and (t-last_sms > 60*recalibrate_freq):  # minimum 10 minutes between sms alerts please!
+            # send sms
+            if gmail_pw and (t-last_sms > 30):  # minimum seconds between sms alerts please!
                 last_sms = t
                 send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
 
@@ -107,11 +121,9 @@ while True:
             """
             this is fail
             if int(reading) > (resident_cat_variance_ratio*base+variance):
+                time_str = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()
                 print("resident cat? - " + str(reading) + ' - ' + time_str, file=f)
             """
 
     except ValueError:
         print(reading, file=f)
-
-
-
