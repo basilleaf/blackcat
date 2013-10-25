@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-from os import system
+from os import system, listdir
+from os.path import isfile, join
 import random
 import getpass
 import serial
+from random import shuffle
 from time import strftime, mktime, sleep
 from datetime import datetime
 from fabric.contrib.console import confirm  # ux baby
@@ -49,8 +51,13 @@ if confirm("Now upload your sketch to the arduino, say Y ®: "):
     print('ok!')
 
 # connect to our log file and fetch the creepy voices
+"""
 f = open(log_file,'w')
 voices = open('creepy_voices.txt').readlines()
+"""
+
+# get collection of wav files
+wav_files = [ f for f in listdir('audio') if isfile(join('audio',f)) ]
 
 # doing initial calibration..
 print("doing initial calibration..")
@@ -114,7 +121,8 @@ while True:
             """
 
             # play a wav file
-            system('afplay ~/GET_OUT_OF_HERE_CAT.wav')
+            shuffle(wav_files)
+            system('afplay ~/audio/' + wave_files[0])
 
             # log
             msg = "%s Black cat detected! - %s - %s" % (strftime("%X").strip(), str(reading).strip(), strftime("%a, %d %b %Y").strip())
