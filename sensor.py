@@ -3,7 +3,7 @@
 from __future__ import print_function
 from os import system, listdir
 from os.path import isfile, join
-import random
+from random import shuffle
 import getpass
 import serial
 from random import shuffle
@@ -18,8 +18,6 @@ from secrets import secrets
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 20  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
-
-log_file = "black_cat_sightings.log"
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
@@ -45,14 +43,12 @@ except serial.serialutil.SerialException:
     if confirm("Please plug in the Arduino, say Y when that's done: "):
         ser = serial.Serial('/dev/tty.usbmodemfd121', 19200)
 
-
 # upload your script to the arduino
 if confirm("Now upload your sketch to the arduino, say Y ®: "):
     print('ok!')
 
-# connect to our log file and fetch the creepy voices
 """
-f = open(log_file,'w')
+fetch the creepy voices
 voices = open('creepy_voices.txt').readlines()
 """
 
@@ -70,6 +66,9 @@ last_checked_status = mktime(datetime.now().timetuple())
 turned_off = False
 
 while True:
+
+    # connect to our log file
+    f = open("black_cat_sightings.log",'w')
 
     reading = ser.readline()
 
@@ -98,7 +97,7 @@ while True:
     if first_reading:
         first_reading = False
         time_str = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()
-        print("hello, first reading: - " + reading + ' - ' + time_str)
+        print("hello, first reading: " + reading + ' - ' + time_str)
         print("hello, first reading: " + reading + ' - ' + time_str, file=f)
         f.flush()
         sleep(1)
@@ -109,11 +108,11 @@ while True:
         if int(reading) < (base-variance): # black cats always score lower than base
             # we haz a black cat!
 
-            # pick a creepy voice at random and scare a cat with it
-            random.shuffle(voices)
 
             # play a mac creepy mac voice
             """
+            # pick a creepy voice at random and scare a cat with it
+            shuffle(voices)
             voice, phrase = [v.strip() for v in voices[0].split('en_US    #')]
             msg = "say -r 340 -v %s %s " % (voice, scary_msg)
             system(msg)
@@ -122,7 +121,7 @@ while True:
 
             # play a wav file
             shuffle(wav_files)
-            system('afplay ~/audio/' + wave_files[0])
+            system('afplay audio/' + wav_files[0])
 
             # log
             msg = "%s Black cat detected! - %s - %s" % (strftime("%X").strip(), str(reading).strip(), strftime("%a, %d %b %Y").strip())
@@ -148,3 +147,5 @@ while True:
 
     except ValueError:
         print(reading, file=f)
+
+    f.close()

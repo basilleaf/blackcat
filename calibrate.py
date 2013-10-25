@@ -8,8 +8,7 @@ def calibrate(ser, f):
     this fails around sunset and sunrise, is good at stable ambient lighting
     """
 
-    print("recalibrating..", file=f)
-    f.flush()
+    print("recalibrating..")
 
     # take 10 readings
     latest_readings = []
@@ -31,8 +30,8 @@ def calibrate(ser, f):
 
     time_last_calib = mktime(datetime.now().timetuple())
 
-    print("recalibrated " + datetime.fromtimestamp(mktime(datetime.now().timetuple())).strftime('%Y-%m-%d %H:%M:%S').strip(), file=f)
-    print('base: ' + str(base) + ' ' + 'variance: ' + str(variance), file=f)
+    print("recalibrated " + datetime.fromtimestamp(mktime(datetime.now().timetuple())).strftime('%Y-%m-%d %H:%M:%S').strip())
+    print('base: ' + str(base) + ' ' + 'variance: ' + str(variance))
 
     # debug
     # print('%s %s %s' % (str(base), str(variance), str(time_last_calib)))

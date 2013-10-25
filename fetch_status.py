@@ -3,6 +3,8 @@ from calibrate import calibrate
 from time import sleep
 import urllib2
 
+print('ok watching https://s3.amazonaws.com/blackcatsensor/status')
+
 while True:
     try:
         status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
