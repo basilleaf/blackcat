@@ -54,6 +54,9 @@ voices = open('creepy_voices.txt').readlines()
 
 # get collection of wav files
 wav_files = [ f for f in listdir('audio') if isfile(join('audio',f)) ]
+# because random works better on a larger list of items:
+for i in range(0,3):
+    wav_files = wav_files + wav_files
 
 # doing initial calibration..
 print("doing initial calibration..")
