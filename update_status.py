@@ -1,6 +1,8 @@
 from __future__ import print_function
 import os
 import boto
+import urllib2
+
 """
     updates status on remote s3 bucket
 
@@ -22,9 +24,9 @@ aws_bucket_name = config['aws_bucket_name']
 
 def update_status(status):
 
+    print("updating status to " + status)
     # update local status
     f = open('status','w')
-    status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
     print(status, file=f),
     f.close()
 

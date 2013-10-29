@@ -76,13 +76,15 @@ while True:
     # print(str(base) + ' ' + str(variance) + ' reading: ' + str(reading))
 
     t = mktime(datetime.now().timetuple())
-
     status = open('status').readlines()[0]
+
     if status != 'ON':
+
         if status[0:2] == 'CA':
             # this means recalibrate now:
             base, variance, time_last_calib = calibrate(ser, f)
             update_status('ON')
+
         elif status == 'OFF':
             print(strftime("%X").strip() + " going off for 15 minutes")
             turned_off = True
