@@ -16,7 +16,7 @@ Turns out you can detect a black cat against a white wall pretty accurately with
 
 This currently runs with Arduino tethered to a Mac. sensor.py reads serial port from Arduino, decides if it is seeing a black cat, uses Mac 'say' command to scare cat. Recalibrates occasionally.
 
-Update: Cat got wise to the Mac robo voices, so now we play .wav file recordings of our voices yelling and stomping down the hall.. This has been workig consistently so far! Here is the most frequent offender "Big Steve" making a hasty retreat. The sensor is embedded inside a small black box to the left of the cat flap:
+Update: Cat got wise to the Mac robo voices, so now we play .wav file recordings of our own human voices yelling and stomping down the hall.. This has been working consistently so far! Here is the most frequent offender "Big Steve" making a hasty retreat. The sensor is embedded inside a small black ring box to the left of the cat flap:
 
 <img src = "https://dl.dropboxusercontent.com/u/22391580/big_steve_gets_yelled_at.jpg">
 
