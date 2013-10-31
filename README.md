@@ -24,3 +24,15 @@ Update: Cat got wise to the Mac robo voices, so now we play .wav file recordings
 
 So far it problems when ambient light is rapidly changing at dawn + dusk, especially at dusk. When ambient light fades quickly it reacts as though it is seeing a black cat and sounds the alarm repeatedly! So far fix has been to either only use it after dark, or to recalibrate more often, can also send SMS to turn off/recalibrate on the fly.
 
+### install
+
+    git clone git@github.com:basilleaf/blackcat.git
+    echo  "ON" > status
+    touch black_cat_sightings.log
+    virtualenv venv --distribute
+    source venv/bin/activate
+    pip install -r requirements.txt
+
+### run it:
+
+    python sensor.py
