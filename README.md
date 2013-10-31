@@ -30,6 +30,7 @@ So far it problems when ambient light is rapidly changing at dawn + dusk, especi
     cd blackcat
     echo  "ON" > status
     touch black_cat_sightings.log
+    cp secrets_template.py secrets.py  # edit this
     virtualenv venv --distribute
     source venv/bin/activate
     pip install -r requirements.txt
