@@ -27,12 +27,14 @@ So far it problems when ambient light is rapidly changing at dawn + dusk, especi
 ### install
 
     git clone git@github.com:basilleaf/blackcat.git
+    cd blackcat
     echo  "ON" > status
     touch black_cat_sightings.log
     virtualenv venv --distribute
     source venv/bin/activate
     pip install -r requirements.txt
 
-### run it:
+### run:
 
     python sensor.py
+    tail -f black_cat_sightings.log
