@@ -79,7 +79,10 @@ while True:
     # print(str(base) + ' ' + str(variance) + ' reading: ' + str(reading))
 
     t = mktime(datetime.now().timetuple())
-    status = open('status').readlines()[0].strip()
+    try:
+        status = open('status').readlines()[0].strip()
+    except IndexError:
+        status = 'ON'
 
     if status != 'ON':
 
