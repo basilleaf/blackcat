@@ -18,6 +18,7 @@ from secrets import secrets
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 20  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
+serial_port = '/dev/tty.usbmodemfd121'
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
@@ -38,10 +39,10 @@ sleep(2)
 
 # connect to the Arduino's serial port
 try:
-    ser = serial.Serial('/dev/tty.usbmodemfd121', 19200)
+    ser = serial.Serial(serial_port, 19200)
 except serial.serialutil.SerialException:
     if confirm("Please plug in the Arduino, say Y when that's done: "):
-        ser = serial.Serial('/dev/tty.usbmodemfd121', 19200)
+        ser = serial.Serial(serial_port, 19200)
 
 # upload your script to the arduino
 if confirm("Now upload your sketch to the arduino, say Y ®: "):
