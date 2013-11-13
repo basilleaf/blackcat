@@ -9,7 +9,7 @@ import serial
 from random import shuffle
 from time import strftime, mktime, sleep
 from datetime import datetime
-from fabric.contrib.console import confirm  # ux baby
+from confirm import confirm  # ux baby
 from send_sms import send_sms
 from calibrate import calibrate
 from update_status import update_status
