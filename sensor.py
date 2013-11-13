@@ -6,9 +6,10 @@ from os.path import isfile, join
 from random import shuffle
 import getpass
 import serial
-from random import shuffle
+# from random import shuffle
 from time import strftime, mktime, sleep
 from datetime import datetime
+
 from confirm import confirm  # ux baby
 from send_sms import send_sms
 from calibrate import calibrate
