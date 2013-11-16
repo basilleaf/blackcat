@@ -4,9 +4,6 @@ from datetime import datetime
 from time import strftime, mktime, sleep
 
 def calibrate(ser, f):
-    """
-    this fails around sunset and sunrise, is good at stable ambient lighting
-    """
 
     print("recalibrating..")
 

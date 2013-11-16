@@ -101,7 +101,7 @@ while True:
 
     if turned_off == True:
         print("ok back on")
-        turned_off == False
+        turned_off = False
 
 
     if first_reading:
