@@ -1,3 +1,11 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+This is a Flask app that runs on Heroku
+It uses Twilio to accept sms commands, and updates a file
+on amazon s3 with the status you send to it.
+
+"""
 from __future__ import print_function
 import os
 import urllib2
@@ -8,6 +16,8 @@ from update_status import update_status
 
 app = Flask(__name__)
 
+valid_commands = ['ON','OFF','CAL','CALIBRATE','CALIB','STATUS','STAT']
+
 @app.route("/", methods=['GET', 'POST'])
 def hello():
 
@@ -16,7 +26,7 @@ def hello():
 
     resp = twilio.twiml.Response()
 
-    if text_command and text_command not in ['ON','OFF','CAL','CALIBRATE','CALIB','STATUS','STAT']:
+    if text_command and text_command not in valid_commands:
         resp.message("invalid command: " + text_command)
 
     elif text_command:

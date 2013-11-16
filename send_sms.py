@@ -1,3 +1,11 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+"""
+this sends an sms using gmail, this is not ideal and should
+really use the Twilio instead, so you are conversing with
+the same sender on your phone.
+
+"""
 # send_sms.py
 import smtplib
 from time import sleep

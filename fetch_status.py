@@ -1,3 +1,8 @@
+"""
+    This watches the remote status file (on s3) and updates a local status file
+    it runs separately if you want sms control you have to run it
+
+"""
 from __future__ import print_function
 from calibrate import calibrate
 from time import sleep

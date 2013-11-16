@@ -1,5 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""
+    Run it:
+
+    python sensor.py
+
+    After a little dialogue it will watch the luminosity readings
+    from the serial port and decide if we have a black cat or a resident cat
+
+"""
 from __future__ import print_function
 from os import system, listdir
 from os.path import isfile, join
