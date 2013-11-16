@@ -1,10 +1,16 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 from __future__ import print_function
 import os
 import boto
 import urllib2
 
 """
-    updates status on remote s3 bucket
+    updates status in local status.txt and on remote s3 bucket
+
+    you can update the remote status with the heroku app
+    but the local deployment also needs to update the status
+    (ie like turning it to ON after it finishes calibrating)
 
 """
 
@@ -26,7 +32,7 @@ def update_status(status):
 
     print("updating status to " + status)
     # update local status
-    f = open('status','w')
+    f = open('status.txt','w')
     print(status, file=f),
     f.close()
 
