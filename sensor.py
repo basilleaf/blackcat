@@ -92,7 +92,7 @@ while True:
 
     t = mktime(datetime.now().timetuple())
     try:
-        status = open('status').readlines()[0].strip()
+        status = open('status.txt').readlines()[0].strip()
     except IndexError:
         status = 'ON'
 
