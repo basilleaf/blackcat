@@ -95,9 +95,9 @@ while True:
             update_status('ON')
 
         elif status == 'OFF':
-            print(strftime("%X").strip() + " going off for 15 minutes")
+            print(strftime("%X").strip() + " going off for 5 minutes")
             turned_off = True
-            sleep(15*60)  # sleep 15 minutes then continue
+            sleep(5*60)  # sleep n minutes then continue
             continue
 
     if turned_off == True:
