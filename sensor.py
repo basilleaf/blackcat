@@ -16,10 +16,11 @@ from calibrate import calibrate
 from update_status import update_status
 from secrets import secrets
 
+from settings import serial_port
+
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 20  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
-serial_port = '/dev/tty.usbmodemfd121'
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
