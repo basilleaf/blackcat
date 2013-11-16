@@ -74,7 +74,7 @@ turned_off = False
 while True:
 
     # connect to our log file
-    f = open("black_cat_sightings.log",'w')
+    f = open("logs/black_cat_sightings.log",'w')
 
     reading = ser.readline()
 
