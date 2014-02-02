@@ -7,12 +7,11 @@ def calibrate(ser, f):
 
     print("recalibrating..")
 
-    # take 10 readings
+    # take 5 readings
     latest_readings = []
-    for c in range(0,10):
+    for c in range(0,5):
         reading = ser.readline()
         latest_readings.append(int(reading))
-        sleep(.3)
 
     # and recalculate base and variance
     base = int(sum(latest_readings)/len(latest_readings))
