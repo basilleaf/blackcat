@@ -147,7 +147,7 @@ while True:
                         continue  # continue the outer while
 
 
-            consecutive_triggers++
+            consecutive_triggers += 1
 
 
             # play a mac creepy mac voice
