@@ -13,7 +13,7 @@ print('ok watching https://s3.amazonaws.com/blackcatsensor/status')
 while True:
     try:
         status =  urllib2.urlopen('https://s3.amazonaws.com/blackcatsensor/status').readlines()[0]
-        f = open('status','w')
+        f = open('status.txt','w')
         print(status, file=f),
         f.close()
     except urllib2.URLError:

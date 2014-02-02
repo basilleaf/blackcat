@@ -12,16 +12,17 @@ def calibrate(ser, f):
     for c in range(0,10):
         reading = ser.readline()
         latest_readings.append(int(reading))
-        sleep(1)
+        sleep(.3)
 
     # and recalculate base and variance
     base = int(sum(latest_readings)/len(latest_readings))
 
     # the sensor becomes more sensitive in brighter ambient lighting
-    if base < 15:
+    # based on observations   
+    if base > 350:
+	variance = int(base/4) 
+    if base > 125:
         variance = int(base/2)
-    elif base < 25:
-        variance = int(base/3)
     else:
         variance = int(base/4)
 

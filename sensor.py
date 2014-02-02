@@ -28,7 +28,7 @@ from secrets import secrets
 from settings import serial_port
 
 resident_cat_variance_ratio = 1.5
-recalibrate_freq = 20  # minutes
+recalibrate_freq = 10  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
@@ -83,7 +83,7 @@ turned_off = False
 while True:
 
     # connect to our log file
-    f = open("logs/black_cat_sightings.log",'w')
+    f = open("logs/black_cat_sightings.log",'a')
 
     reading = ser.readline()
 
@@ -120,8 +120,8 @@ while True:
         print("hello, first reading: " + reading + ' - ' + time_str)
         print("hello, first reading: " + reading + ' - ' + time_str, file=f)
         f.flush()
-        sleep(1)
-        continue;
+	sleep(1)
+        continue
 
     try:
 
@@ -137,16 +137,17 @@ while True:
             msg = "say -r 340 -v %s %s " % (voice, scary_msg)
             system(msg)
             print(msg, file=f)
+	    f.flush()
             """
 
             # play a wav file
             shuffle(wav_files)
-            system('afplay audio/' + wav_files[0])
+            system('aplay audio/' + wav_files[0])
 
             # log
-            msg = "%s Black cat detected! - %s - %s" % (strftime("%X").strip(), str(reading).strip(), strftime("%a, %d %b %Y").strip())
+            msg = "%s Black cat detected! - reading: %s base: %s signma: %s - %s" % (strftime("%X").strip(), str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
             print(msg, file=f)
-            f.flush()
+	    f.flush()
 
             # send sms
             if gmail_pw and (t-last_sms > 30):  # minimum seconds between sms alerts please!
