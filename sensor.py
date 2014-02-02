@@ -25,6 +25,7 @@ from calibrate import calibrate
 from update_status import update_status
 from secrets import secrets
 
+
 from settings import serial_port
 
 resident_cat_variance_ratio = 1.5
@@ -80,11 +81,14 @@ status = 'ON'
 last_checked_status = mktime(datetime.now().timetuple())
 turned_off = False
 
+consecutive_triggers = 0
+consecutive_trigger_break = 0.
 while True:
 
     # connect to our log file
     f = open("logs/black_cat_sightings.log",'a')
 
+    ser.flushInput()  # attempt to keep commands from stacking up, always get latest reading
     reading = ser.readline()
 
     # debugging
@@ -120,13 +124,30 @@ while True:
         print("hello, first reading: " + reading + ' - ' + time_str)
         print("hello, first reading: " + reading + ' - ' + time_str, file=f)
         f.flush()
-	sleep(1)
+        sleep(1)
         continue
 
     try:
 
         if int(reading) < (base-variance): # black cats always score lower than base
             # we haz a black cat!
+
+
+            if consecutive_triggers > 5:
+                # don't ring the alarm more than 5 times in a row, let the buffer
+                # flow out until it's all clear
+                # there was a problem that around noon it would continuously trigger until
+                # remotely recalibrated
+                timenow = mktime(datetime.now().timetuple())
+                if not consecutive_trigger_break:
+                    if timenow > consecutive_trigger_break + 60 * 15:
+                        # 15 minutes have gone by since this was triggered
+                        consecutive_trigger_break = 0.
+                    else:
+                        continue  # continue the outer while
+
+
+            consecutive_triggers++
 
 
             # play a mac creepy mac voice
@@ -155,6 +176,7 @@ while True:
                 send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
 
         else:
+            consecutive_triggers = 0
             # no cats, do we need to calibrate?
             if t-time_last_calib > 60*recalibrate_freq:
                 base, variance, time_last_calib = calibrate(ser, f)
