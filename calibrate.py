@@ -18,9 +18,8 @@ def calibrate(ser, f):
     base = int(sum(latest_readings)/len(latest_readings))
 
     # the sensor becomes more sensitive in brighter ambient lighting
-    # based on observations   
     if base > 350:
-	variance = int(base/4) 
+	   variance = int(base/4)  # based on observations
     if base > 125:
         variance = int(base/2)
     else:
