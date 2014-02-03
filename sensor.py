@@ -29,7 +29,7 @@ from secrets import secrets
 from settings import serial_port
 
 resident_cat_variance_ratio = 1.5
-recalibrate_freq = 10  # minutes
+recalibrate_freq = 15  # minutes
 scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients

@@ -30,10 +30,9 @@ def calibrate(ser, f):
 
     # take 10 readings
     latest_readings = []
-    for c in range(0,10):
+    for c in range(0,5):
         reading = ser.readline()
         latest_readings.append(int(reading))
-        sleep(.3)
 
     # and recalculate base and trigger_limit/trigger_limit
 
