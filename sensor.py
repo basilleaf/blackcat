@@ -26,7 +26,7 @@ from update_status import update_status
 from secrets import secrets
 
 
-from settings import serial_port
+from settings import serial_port, log_level
 
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
@@ -47,7 +47,6 @@ if gmail_pw:
 # if you want sms control...
 sms_msg = "if you want sms control, run this in another shell: \n python fetch_status.py"
 print(sms_msg)
-sleep(2)
 
 # connect to the Arduino's serial port
 try:
@@ -127,6 +126,14 @@ while True:
         sleep(1)
         continue
 
+    # tiny movement logging
+    if log_level == 'ALL':
+        if abs(int(reading) - int(base)) > 5:
+            # if it moves just a little log to json api
+            msg = "time: %s reading: %s, base: %s, variance: %s, threshhold: %s" % (str(time_str), str(reading.strip()), str(base), str(variance), str(base-variance))
+            print(msg, file=f)
+            f.flush()
+
     try:
 
         if int(reading) < (base-variance): # black cats always score lower than base
@@ -142,7 +149,7 @@ while True:
                 if not consecutive_trigger_break:
                     if timenow > consecutive_trigger_break + 60 * 15:
                         # 15 minutes have gone by since this was triggered
-                        consecutive_trigger_break = 0.
+                        consecutive_trigger_break = 0
                     else:
                         continue  # continue the outer while
 
@@ -158,17 +165,20 @@ while True:
             msg = "say -r 340 -v %s %s " % (voice, scary_msg)
             system(msg)
             print(msg, file=f)
-	    f.flush()
+	       f.flush()
             """
+
+
+            # log
+            msg = "%s Black cat detected! - reading: %s base: %s signma: %s - %s" % (strftime("%X").strip(), str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
+            print(msg, file=f)
+            f.flush()
+
 
             # play a wav file
             shuffle(wav_files)
             system('aplay audio/' + wav_files[0])
 
-            # log
-            msg = "%s Black cat detected! - reading: %s base: %s signma: %s - %s" % (strftime("%X").strip(), str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
-            print(msg, file=f)
-	    f.flush()
 
             # send sms
             if gmail_pw and (t-last_sms > 30):  # minimum seconds between sms alerts please!
