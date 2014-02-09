@@ -130,7 +130,7 @@ while True:
     if log_level == 'ALL':
         if abs(int(reading) - int(base)) > 5:
             # if it moves just a little log to json api
-            msg = "time: %s reading: %s, base: %s, variance: %s, threshhold: %s" % (str(time_str), str(reading.strip()), str(base), str(variance), str(base-variance))
+            msg = "time: %s reading: %s, base: %s, variance: %s, threshhold: %s" % (str(datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()), str(reading.strip()), str(base), str(variance), str(base-variance))
             print(msg, file=f)
             f.flush()
 
