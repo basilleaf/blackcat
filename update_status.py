@@ -32,7 +32,7 @@ def update_status(status):
 
     print("updating status to " + status)
     # update local status
-    f = open('status.txt','w')
+    f = open('/home/pi/blackcat/status.txt','w')
     print(status, file=f),
     f.close()
 

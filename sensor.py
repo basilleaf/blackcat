@@ -25,8 +25,11 @@ from calibrate import calibrate
 from update_status import update_status
 from secrets import secrets
 
+from settings import serial_port,log_level
 
-from settings import serial_port, log_level
+# the arduino needs longer to start than this does
+print("sleeping for 30 seconds")
+sleep(30)
 
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
@@ -34,7 +37,8 @@ scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssss
 
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
-gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
+# gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
+gmail_pw = secrets['gmail_pw']
 
 # send an initial sms
 if gmail_pw:
@@ -50,14 +54,17 @@ print(sms_msg)
 
 # connect to the Arduino's serial port
 try:
-    ser = serial.Serial(serial_port, 19200)
+    ser = serial.Serial(serial_port, 9600)
 except serial.serialutil.SerialException:
     if confirm("Please plug in the Arduino, say Y when that's done: "):
-        ser = serial.Serial(serial_port, 19200)
+        ser = serial.Serial(serial_port, 9600)
+
 
 # upload your script to the arduino
+"""
 if confirm("Now upload your sketch to the arduino, say Y ®: "):
     print('ok!')
+"""
 
 """
 fetch the creepy voices
@@ -85,7 +92,7 @@ consecutive_trigger_break = 0.
 while True:
 
     # connect to our log file
-    f = open("logs/black_cat_sightings.log",'a')
+    f = open("/home/pi/blackcat/logs/black_cat_sightings.log",'a')
 
     ser.flushInput()  # attempt to keep commands from stacking up, always get latest reading
     reading = ser.readline()
