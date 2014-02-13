@@ -10,99 +10,127 @@
 
 """
 from __future__ import print_function
+import sys
 from os import system, listdir
 from os.path import isfile, join
-from random import shuffle
-import getpass
+
 import serial
-# from random import shuffle
+from random import choice
 from time import strftime, mktime, sleep
 from datetime import datetime
 
 from confirm import confirm  # ux baby
 from send_sms import send_sms
-from calibrate import calibrate
 from update_status import update_status
 from secrets import secrets
 
-from settings import serial_port,log_level
-
-# the arduino needs longer to start than this does
-print("sleeping for 30 seconds")
-sleep(30)
+from settings import serial_port
+import logging
 
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
-scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
 
+# set up logging
+logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=logging.INFO, format='%(asctime)s %(message)s')
+
+# set up email things
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
 # gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
 gmail_pw = secrets['gmail_pw']
 
-# send an initial sms
+# send an initial test sms
 if gmail_pw:
-    print("sending test sms...")
+    logging.info("sending test sms...")
     send_sms('black cat sms alerts have begun', gmail_addy, gmail_pw, sms_recipients)
     last_sms = mktime(datetime.now().timetuple())
-    print("ok that worked!")
-
+    logging.info("ok test sms worked!")
 
 # if you want sms control...
 sms_msg = "if you want sms control, run this in another shell: \n python fetch_status.py"
 print(sms_msg)
 
 # connect to the Arduino's serial port
+# but first take a break: the arduino needs longer on startup than this does script does apparently
+logging.info("sleeping for 15 seconds")
+sleep(15)
+
 try:
     ser = serial.Serial(serial_port, 9600)
 except serial.serialutil.SerialException:
     if confirm("Please plug in the Arduino, say Y when that's done: "):
         ser = serial.Serial(serial_port, 9600)
 
-
-# upload your script to the arduino
-"""
-if confirm("Now upload your sketch to the arduino, say Y ®: "):
-    print('ok!')
-"""
-
-"""
-fetch the creepy voices
-voices = open('creepy_voices.txt').readlines()
-"""
-
-# get collection of wav files
-wav_files = [ f for f in listdir('audio') if isfile(join('audio',f)) ]
-# because random works better on a larger list of items:
-for i in range(0,3):
-    wav_files = wav_files + wav_files
-
-# doing initial calibration..
-print("doing initial calibration..")
-base, variance, time_last_calib = calibrate(ser, f)
-
-# read the serial port for sensor readings:
+# some vars to keep track of things
 first_reading = True
 status = 'ON'
-last_checked_status = mktime(datetime.now().timetuple())
 turned_off = False
-
 consecutive_triggers = 0  # count of number of consecutive trigger alarms
-consecutive_trigger_break = 0.
-while True:
+last_consecutive_trigger_break = 0.
 
-    # connect to our log file
-    f = open("/home/pi/blackcat/logs/black_cat_sightings.log",'a')
 
+def calibrate(ser):
+
+    print("recalibrating..")
+
+    # take 10 readings
+    latest_readings = []
+    error_count = 0
+    while len(latest_readings) < 11:
+        reading = get_serial_reading()
+
+        # can this reading be cast as int?
+        try:
+            int(reading)
+        except ValueError:
+            # how many time will we let this trip?
+            error_count += 1
+            if error_count > 5:
+                logging.error("could not calibrate, errors in reading serial line as int")
+                sys.exit()
+
+        if int(reading) > 3000:
+            logging.info('got large calib reading ' + str(reading.strip()) + ' throwing it away ')
+            continue  # there is an initial spike that is really 2 numbers coming accross as 1
+
+        latest_readings.append(int(reading))
+
+    logging.info(latest_readings)
+    # and recalculate base and variance
+    base = int(sum(latest_readings)/len(latest_readings))
+
+    # the sensor becomes less sensitive in brighter ambient lighting
+    if base > 100:
+        variance = base/2
+    else:
+       variance  = base/4
+
+    time_last_calib = mktime(datetime.now().timetuple())
+
+    logging.info("recalibrated " + datetime.fromtimestamp(mktime(datetime.now().timetuple())).strftime('%Y-%m-%d %H:%M:%S').strip())
+    logging.info('base: ' + str(base) + ' ' + 'variance: ' + str(variance))
+
+    return (base, variance, time_last_calib)
+
+
+def play_random_local_wave_file():
+    wav_files = [f for f in listdir('audio') if isfile(join('audio',f)) ]
+    # because random works better on a larger list of items:
+    for i in range(0,3):
+        wav_files = wav_files + wav_files
+    system('aplay audio/' + choice(wav_files))
+
+
+def get_serial_reading():
     ser.flushInput()  # attempt to keep commands from stacking up, always get latest reading
-    reading = ser.readline()
+    return (ser.readline())
 
-    # debugging
-    # print(str(base) + ' ' + str(variance) + ' reading: ' + str(reading))
+def status_break():
+    """ returns true if the status file says hold or recalibrate and thus this iteration should be skipped """
+    global status, base, variance, time_last_calib, turned_off
 
-    t = mktime(datetime.now().timetuple())
     try:
-        status = open('status.txt').readlines()[0].strip()
+        status = open('/home/pi/blackcat/status.txt').readlines()[0].strip()
     except IndexError:
         status = 'ON'
 
@@ -110,36 +138,87 @@ while True:
 
         if status[0:2] == 'CA':
             # this means recalibrate now:
-            base, variance, time_last_calib = calibrate(ser, f)
-            update_status('ON')
+            base, variance, time_last_calib = calibrate(ser)
+            update_status('ON')  # change the status back to on
+            return True
 
         elif status == 'OFF':
-            print(strftime("%X").strip() + " going off for 5 minutes")
+            logging.info("going off for 5 minutes")
             turned_off = True
             sleep(5*60)  # sleep n minutes then continue
-            continue
+            return True
 
     if turned_off == True:
-        print("ok back on")
+        # status is on, but this was turned off before, so post a log msga
+        logging.info("ok back on")
         turned_off = False
+        return False  # we are back on
 
+
+
+def consecutive_trigger_break():
+    """
+        returns true if the loop should be skipped this time around
+        many consecutive triggers happen around noon on a sunny day, there is no cat
+        this just makes it so only 5 triggers can ever be called
+    """
+
+    global base, variance, time_last_calib, last_consecutive_trigger_break
+
+    if consecutive_triggers < 5:
+        return False
+
+    # alarm has gone off 5 times in a row
+    timenow = mktime(datetime.now().timetuple())
+
+    if not last_consecutive_trigger_break:
+        # so far we have not stopped alarms with the consecutive_trigger_break flag
+        # let's recalibrate and do that now
+        base, variance, time_last_calib = calibrate(ser)
+        last_consecutive_trigger_break = timenow
+        logging.info(" setting consecutive_trigger_break")
+        return True
+    else:
+        # if timenow > consecutive_trigger_break + 15:  # debug
+        if timenow > last_consecutive_trigger_break + 60 * 15:
+            # 15 minutes have gone by since consecutive_trigger_break was set, let's turn it off
+            last_consecutive_trigger_break = 0
+            logging.info("turning off consecutive_trigger_break")
+            base, variance, time_last_calib = calibrate(ser)  # just in case
+            return False
+        else:
+            sleep(10)
+            return True
+
+
+# doing initial calibration..
+logging.info("doing initial calibration..")
+base, variance, time_last_calib = calibrate(ser)
+
+while True:
+
+
+    sleep(.5)  # check the serial reading every x time
+    timenow = mktime(datetime.now().timetuple())
+
+    # always check the status.txt file before doing anything
+    if status_break():
+        logging.debug('taking status break')
+        continue
+
+    reading = get_serial_reading()
 
     if first_reading:
         first_reading = False
-        time_str = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()
-        print("hello, first reading: " + reading + ' - ' + time_str)
-        print("hello, first reading: " + reading + ' - ' + time_str, file=f)
-        f.flush()
-        sleep(1)
+        logging.info("hello first reading: " + reading)
         continue
 
-    # tiny movement logging
-    if log_level == 'ALL':
-        if abs(int(reading) - int(base)) > 25:
-            # if it moves just a little log to json api
-            msg = "time: %s reading: %s, base: %s, variance: %s, threshhold: %s" % (str(datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()), str(reading.strip()), str(base), str(variance), str(base-variance))
-            print(msg, file=f)
-            f.flush()
+    logging.debug('ok ' + str(reading) + ' ' + str(base))
+
+    # tiny movement logging (for debugging)
+    if abs(int(reading) - int(base)) > 25:
+        msg = "tiny movement reading: %s, base: %s, variance: %s, threshhold: %s" % (str(reading.strip()), str(base), str(variance), str(base-variance))
+        logging.debug(msg)
 
     try:
 
@@ -148,72 +227,47 @@ while True:
 
             consecutive_triggers += 1
 
-            # there is a problem that around noon-ish it would continuously trigger until
-            # remotely recalibrated
-            if consecutive_triggers > 5:
-                # alarm has gone off 5 times in a row
-                timenow = mktime(datetime.now().timetuple())
-                if not consecutive_trigger_break:
-                    # so far we have not stopped alarms with the consecutive_trigger_break flag
-                    # let's recalibrate and do that now
-                    base, variance, time_last_calib = calibrate(ser, f)
-                    consecutive_trigger_break = timenow
-                    print(strftime("%X").strip() + " setting consecutive_trigger_break", file=f)
-                    continue
-                else:
-                    # if timenow > consecutive_trigger_break + 60 * 15:
-                    if timenow > consecutive_trigger_break + 15:
-                        # 15 minutes have gone by since consecutive_trigger_break was set, let's turn it off
-                        consecutive_trigger_break = 0
-                        print(strftime("%X").strip() + " turning off consecutive_trigger_break", file=f)
-                        base, variance, time_last_calib = calibrate(ser, f)  # just in case
-                    else:
-                        sleep(10)
-                        continue  # continue the outer while
+            if consecutive_trigger_break():
+                logging.info('hit consecutive trigger break')
+                continue
+
+            # log
+            msg = "Black cat detected! - reading: %s base: %s signma: %s - %s" % (str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
+            logging.info(msg)
+
+            # play a wav file
+            play_random_local_wave_file()
+
+            # send sms
+            if gmail_pw and (timenow-last_sms > 30):  # minimum seconds between sms alerts please!
+                last_sms = timenow
+                send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
 
 
-            # play a mac creepy mac voice
+            # launch the wemo switch
+
+
+            # play a mac creepy mac OSX voice - we have wav files so this is removed..
             """
             # pick a creepy voice at random and scare a cat with it
+            scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
             shuffle(voices)
             voice, phrase = [v.strip() for v in voices[0].split('en_US    #')]
             msg = "say -r 340 -v %s %s " % (voice, scary_msg)
             system(msg)
-            print(msg, file=f)
-	       f.flush()
+            logging.info(msg)
             """
-
-
-            # log
-            msg = "%s Black cat detected! - reading: %s base: %s signma: %s - %s" % (strftime("%X").strip(), str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
-            print(msg, file=f)
-            f.flush()
-
-
-            # play a wav file
-            shuffle(wav_files)
-            system('aplay audio/' + wav_files[0])
-
-
-            # send sms
-            if gmail_pw and (t-last_sms > 30):  # minimum seconds between sms alerts please!
-                last_sms = t
-                send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
 
         else:
-            consecutive_triggers = 0
-            # no cats, do we need to calibrate?
-            if t-time_last_calib > 60*recalibrate_freq:
-                base, variance, time_last_calib = calibrate(ser, f)
 
-            """
-            this is fail
-            if int(reading) > (resident_cat_variance_ratio*base+variance):
-                time_str = datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()
-                print("resident cat? - " + str(reading) + ' - ' + time_str, file=f)
-            """
+            consecutive_triggers = 0
+
+            # no cats, do we need to calibrate?
+            if timenow-time_last_calib > 60*recalibrate_freq:
+                base, variance, time_last_calib = calibrate(ser)
+
 
     except ValueError:
-        print(reading, file=f)
+        logging.info('ValueError: ' + str(reading))
 
-    f.close()
+

@@ -8,5 +8,3 @@ try:
 except ImportError:
     # this must be an aging macbook air
     serial_port = '/dev/tty.usbmodemfd121'
-
-log_level = 'ALL'  # anything but all turns off tiny movement logging
