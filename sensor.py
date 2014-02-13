@@ -87,7 +87,7 @@ status = 'ON'
 last_checked_status = mktime(datetime.now().timetuple())
 turned_off = False
 
-consecutive_triggers = 0
+consecutive_triggers = 0  # count of number of consecutive trigger alarms
 consecutive_trigger_break = 0.
 while True:
 
@@ -135,7 +135,7 @@ while True:
 
     # tiny movement logging
     if log_level == 'ALL':
-        if abs(int(reading) - int(base)) > 5:
+        if abs(int(reading) - int(base)) > 25:
             # if it moves just a little log to json api
             msg = "time: %s reading: %s, base: %s, variance: %s, threshhold: %s" % (str(datetime.fromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S').strip()), str(reading.strip()), str(base), str(variance), str(base-variance))
             print(msg, file=f)
@@ -146,22 +146,30 @@ while True:
         if int(reading) < (base-variance): # black cats always score lower than base
             # we haz a black cat!
 
+            consecutive_triggers += 1
 
+            # there is a problem that around noon-ish it would continuously trigger until
+            # remotely recalibrated
             if consecutive_triggers > 5:
-                # don't ring the alarm more than 5 times in a row, let the buffer
-                # flow out until it's all clear
-                # there was a problem that around noon it would continuously trigger until
-                # remotely recalibrated
+                # alarm has gone off 5 times in a row
                 timenow = mktime(datetime.now().timetuple())
                 if not consecutive_trigger_break:
-                    if timenow > consecutive_trigger_break + 60 * 15:
-                        # 15 minutes have gone by since this was triggered
+                    # so far we have not stopped alarms with the consecutive_trigger_break flag
+                    # let's recalibrate and do that now
+                    base, variance, time_last_calib = calibrate(ser, f)
+                    consecutive_trigger_break = timenow
+                    print(strftime("%X").strip() + " setting consecutive_trigger_break", file=f)
+                    continue
+                else:
+                    # if timenow > consecutive_trigger_break + 60 * 15:
+                    if timenow > consecutive_trigger_break + 15:
+                        # 15 minutes have gone by since consecutive_trigger_break was set, let's turn it off
                         consecutive_trigger_break = 0
+                        print(strftime("%X").strip() + " turning off consecutive_trigger_break", file=f)
+                        base, variance, time_last_calib = calibrate(ser, f)  # just in case
                     else:
+                        sleep(10)
                         continue  # continue the outer while
-
-
-            consecutive_triggers += 1
 
 
             # play a mac creepy mac voice
