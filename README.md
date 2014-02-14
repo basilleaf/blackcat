@@ -1,17 +1,36 @@
 ### Black Cat Detector
 
 Detect if black cat is coming through the cat door, and scare eem! 
-    - remote sms control (on, off, calibrate) via Twilio/Flask app running on Heroku (remote_control.py)
-    - plays scary sounding .wav file (or can just play creepy Mac voice) 
-    - Turns on a Wemo switch (and turns it off a few minutes later) 
+- plays scary sounding .wav file (or can just play creepy Mac voice) 
+- Turns on a Wemo switch (and turns it off a few minutes later) 
+- remote sms control (on, off, calibrate) via Twilio/Flask/S3 app running on Heroku (remote_control.py)
+
 
 run it: 
     
     python sensor.py
 
-black_cat_detector.ino runs on the Arduino
-sensor.py is the detection script
-fetch_status.py watches a remote file on s3 for status updates
+
+- black_cat_detector.ino runs on the Arduino
+- sensor.py is the detection script
+- fetch_status.py watches a remote file on s3 for status updates
+
+
+### install something like.. 
+
+    git clone git@github.com:basilleaf/blackcat.git
+    cd blackcat
+    echo  "ON" > status
+    touch black_cat_sightings.log
+    cp secrets_template.py secrets.py  # edit this
+    virtualenv venv --distribute
+    source venv/bin/activate
+    pip install -r requirements.txt
+    
+### run:
+    python fetch_status.py  # start the deamon to check for SMS status updates
+    python sensor.py  
+
 
 ### Background:
 
@@ -26,21 +45,6 @@ Here is the most frequent offender "Big Steve" making a hasty retreat. The senso
 <img src = "https://dl.dropboxusercontent.com/u/22391580/big_steve_gets_yelled_at.jpg">
 
 
-### install something like.. 
-
-    git clone git@github.com:basilleaf/blackcat.git
-    cd blackcat
-    echo  "ON" > status
-    touch black_cat_sightings.log
-    cp secrets_template.py secrets.py  # edit this
-    virtualenv venv --distribute
-    source venv/bin/activate
-    pip install -r requirements.txt
-    
-
-### run:
-    python fetch_status.py  # start the deamon to check for SMS status updates
-    python sensor.py  
     tail -f black_cat_sightings.log
 
 
