@@ -2,7 +2,9 @@
 
 Detect if black cat is coming through the cat door, and scare eem! Also: keep a log, and if desired send an sms when black cat detected.
 
-Added a Twilio/Heroku/Flask app remote_control.py to send control commands via SMS: on, off, calibrate.
+Added: Twilio/Heroku/Flask app remote_control.py to send control commands via SMS: on, off, calibrate.
+
+Added: Turns on a Wemo switch when black cat detected.
 
 black_cat_detector.ino runs on the Arduino
 sensor.py is the dection script
