@@ -1,12 +1,11 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-    Run it:
-
-    python sensor.py
-
-    After a little dialogue it will watch the luminosity readings
-    from the serial port and decide if we have a black cat or a resident cat
+    Watches serial port for luminosity readings, decides if we have a black cat detection,
+    if so does the following:
+        - plays audio wav files
+        - turn on Wemo switches (for lights and robotics)
+        - sends sms
 
 """
 from __future__ import print_function
@@ -28,7 +27,6 @@ from settings import serial_port
 import logging
 import threading
 
-
 LOG_LEVEL = logging.DEBUG
 
 resident_cat_variance_ratio = 1.5
@@ -40,10 +38,17 @@ sms_recipients = secrets['sms_recipients']
 gmail_pw = secrets['gmail_pw']  # gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
 consecutive_triggers = 0  # count of number of consecutive trigger alarms
 
+# connect to the Arduino's serial port (see settings.py)
+# but first take a break:
+# it seemed the arduino needed longer to startup than this script takes to get to here..
+# todo: may no longer be the case?
+logging.info("sleeping for 15 seconds to give Arduino time to boot up.")
+sleep(15)
 try:
     ser = serial.Serial(serial_port, 9600)
 except serial.serialutil.SerialException:
     if confirm("Please plug in the Arduino, say Y when that's done: "):
+        logging.error("Arduino does not seem to be connected")
         ser = serial.Serial(serial_port, 9600)
 
 # some vars to keep track of things
@@ -99,7 +104,7 @@ def calibrate():
 
 
 def play_random_local_wave_file():
-    """ plays random wave file in audio dir"""
+    """ plays random wave file from 'audio' directory"""
     wav_files = [f for f in listdir('audio') if isfile(join('audio',f)) ]
     # because random works better on a larger list of items:
     for i in range(0,3):
@@ -108,13 +113,18 @@ def play_random_local_wave_file():
 
 
 def get_serial_reading():
+    """ gets latest reading from the serial buffer (flushes buffer before reading"""
     global ser
-    """ gets serial reading and flushes input first"""
     ser.flushInput()  # attempt to keep commands from stacking up, always get latest reading
     return (ser.readline())
 
+
 def status_break():
-    """ returns true if the status file says hold or recalibrate and thus this iteration should be skipped """
+    """returns True or False: 'should we use this reading?'
+       applies to an individual sensor reading
+       checks status by reading local text file status.txt. (which gets update via fetch_status.py)
+       """
+
     global status, base, variance, time_last_calib, turned_off
 
     try:
@@ -143,13 +153,13 @@ def status_break():
         return False  # we are back on
 
 
-
 def consecutive_trigger_break():
+    """returns true if this sensor reading should be discarded because we are in a hold
+        caused by excessivng alarm triggering (more than 5 in a row)
+        this makes it so only 5 triggers can ever be called at a time, 15 min cooling off period ensues.
     """
-        returns true if the loop should be skipped this time around
-        many consecutive triggers happen around noon on a sunny day, there is no cat
-        this just makes it so only 5 triggers can ever be called
-    """
+    # todo: the call to sleep should be inside of this here?
+
     global base, variance, time_last_calib, last_consecutive_trigger_break, consecutive_triggers
 
     if consecutive_triggers < 5:
@@ -179,7 +189,7 @@ def consecutive_trigger_break():
 
 
 class TriggerWemo(threading.Thread):
-    """ turns on the Wemo switch and turns it off 5 minutes later """
+    """turns on a Wemo switch (via gmail and IFTTT) and turns it off 5 minutes later.  """
 
     def __init__(self):
         threading.Thread.__init__(self)
@@ -190,34 +200,33 @@ class TriggerWemo(threading.Thread):
         sleep(60*3)
         logging.info("turning off Wemo light switch")
         send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+
+        # just to be extra cautious and make sure it gets turned off for realzies
         sleep(15)
         send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')  # just in case
 
 
 def main():
+    """ this runs the loop that reads sensor readings, and does some initial setup, logging, things to keep track of"""
+
     global consecutive_triggers
 
     # some vars to keep track of things
     first_reading = True
 
-    # send an initial test sms
     # set up logging
     logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=LOG_LEVEL, format='%(asctime)s %(message)s')
 
+    # send an initial test sms
     if gmail_pw:
         logging.info("sending test sms...")
         send_sms('black cat sms alerts have begun', gmail_addy, gmail_pw, sms_recipients)
         last_sms = mktime(datetime.now().timetuple())
         logging.info("ok test sms worked!")
 
-    # if you want sms control...
+    # if you want sms control msg to command line user...
     sms_msg = "if you want sms control, run this in another shell: \n python fetch_status.py"
     print(sms_msg)
-
-    # connect to the Arduino's serial port
-    # but first take a break: the arduino needs longer on startup than this does script does apparently
-    logging.info("sleeping for 15 seconds")
-    sleep(15)
 
     # doing initial calibration..
     logging.info("doing initial calibration..")
@@ -225,23 +234,23 @@ def main():
 
     while True:
 
-
-        sleep(.5)  # check the serial reading every x time
+        sleep(.5)  # check the serial reading every x time okay?
         timenow = mktime(datetime.now().timetuple())
 
-        # always check the status.txt file before doing anything
+        reading = get_serial_reading()
+
+        # first check if we are even in status = ON here
         if status_break():
             logging.debug('taking status break')
             continue
 
-        reading = get_serial_reading()
-
         if first_reading:
             first_reading = False
-            logging.info("hello first reading: " + reading)
+            logging.debug("hello first reading: " + reading)
             continue
 
         # tiny movement logging (for debugging)
+        # todo: how to check status of logging level?
         if abs(int(reading) - int(base)) > 25:
             msg = "tiny movement reading: %s, base: %s, variance: %s, threshhold: %s" % (str(reading.strip()), str(base), str(variance), str(base-variance))
             logging.debug(msg)
@@ -249,12 +258,13 @@ def main():
         try:
 
             if int(reading) < (base-variance): # black cats always score lower than base
+
                 # we haz a black cat!
 
                 consecutive_triggers += 1
 
                 if consecutive_trigger_break():
-                    logging.info('hit consecutive trigger break')
+                    logging.info('hit consecutive trigger break, time out for a while...')
                     continue
 
                 # log
@@ -269,6 +279,7 @@ def main():
                 play_random_local_wave_file()
 
                 # send sms
+                # todo: move this to it's own thread and do a sleep(30) init
                 if gmail_pw and (timenow-last_sms > 30):  # minimum seconds between sms alerts please!
                     last_sms = timenow
                     send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
@@ -285,10 +296,11 @@ def main():
                 """
 
             else:
+                # no black cat, nothing to see here
 
                 consecutive_triggers = 0
 
-                # no cats, do we need to calibrate?
+                # do we need to calibrate?
                 if timenow-time_last_calib > 60*recalibrate_freq:
                     base, variance, time_last_calib = calibrate()
 
