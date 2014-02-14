@@ -29,6 +29,8 @@ import logging
 import threading
 
 
+LOG_LEVEL = logging.DEBUG
+
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
 
@@ -200,7 +202,7 @@ def main():
 
     # send an initial test sms
     # set up logging
-    logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=logging.INFO, format='%(asctime)s %(message)s')
+    logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=LOG_LEVEL, format='%(asctime)s %(message)s')
 
     if gmail_pw:
         logging.info("sending test sms...")
