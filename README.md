@@ -44,5 +44,4 @@ Here is the most frequent offender "Big Steve" making a hasty retreat. The senso
     tail -f black_cat_sightings.log
 
 
-<3
 <img src = "http://24.media.tumblr.com/e724ec40de93e65324ed1828df68da07/tumblr_mzyynrWrjc1qzaxi1o1_1280.jpg">
