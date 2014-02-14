@@ -28,6 +28,7 @@ from settings import serial_port
 import logging
 import threading
 
+
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
 
@@ -35,6 +36,7 @@ recalibrate_freq = 15  # minutes
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
 gmail_pw = secrets['gmail_pw']  # gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
+consecutive_triggers = 0  # count of number of consecutive trigger alarms
 
 try:
     ser = serial.Serial(serial_port, 9600)
@@ -45,7 +47,6 @@ except serial.serialutil.SerialException:
 # some vars to keep track of things
 status = 'ON'
 turned_off = False
-consecutive_triggers = 0  # count of number of consecutive trigger alarms
 last_consecutive_trigger_break = 0.
 
 
@@ -147,8 +148,7 @@ def consecutive_trigger_break():
         many consecutive triggers happen around noon on a sunny day, there is no cat
         this just makes it so only 5 triggers can ever be called
     """
-
-    global base, variance, time_last_calib, last_consecutive_trigger_break
+    global base, variance, time_last_calib, last_consecutive_trigger_break, consecutive_triggers
 
     if consecutive_triggers < 5:
         return False
@@ -193,6 +193,7 @@ class TriggerWemo(threading.Thread):
 
 
 def main():
+    global consecutive_triggers
 
     # some vars to keep track of things
     first_reading = True
@@ -237,8 +238,6 @@ def main():
             first_reading = False
             logging.info("hello first reading: " + reading)
             continue
-
-        logging.debug('ok ' + str(reading) + ' ' + str(base))
 
         # tiny movement logging (for debugging)
         if abs(int(reading) - int(base)) > 25:
@@ -295,5 +294,7 @@ def main():
         except ValueError:
             logging.info('ValueError: ' + str(reading))
 
+
 if __name__ == "__main__":
+
     main()
