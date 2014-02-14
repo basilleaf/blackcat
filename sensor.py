@@ -20,40 +20,21 @@ from time import strftime, mktime, sleep
 from datetime import datetime
 
 from confirm import confirm  # ux baby
-from send_sms import send_sms
+from send_email import send_sms, send_email
 from update_status import update_status
 from secrets import secrets
 
 from settings import serial_port
 import logging
+import threading
 
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
 
-# set up logging
-logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=logging.INFO, format='%(asctime)s %(message)s')
-
 # set up email things
 gmail_addy = secrets['gmail_addy']  # used for sending the text to sms_recipients
 sms_recipients = secrets['sms_recipients']
-# gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
-gmail_pw = secrets['gmail_pw']
-
-# send an initial test sms
-if gmail_pw:
-    logging.info("sending test sms...")
-    send_sms('black cat sms alerts have begun', gmail_addy, gmail_pw, sms_recipients)
-    last_sms = mktime(datetime.now().timetuple())
-    logging.info("ok test sms worked!")
-
-# if you want sms control...
-sms_msg = "if you want sms control, run this in another shell: \n python fetch_status.py"
-print(sms_msg)
-
-# connect to the Arduino's serial port
-# but first take a break: the arduino needs longer on startup than this does script does apparently
-logging.info("sleeping for 15 seconds")
-sleep(15)
+gmail_pw = secrets['gmail_pw']  # gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
 
 try:
     ser = serial.Serial(serial_port, 9600)
@@ -62,14 +43,15 @@ except serial.serialutil.SerialException:
         ser = serial.Serial(serial_port, 9600)
 
 # some vars to keep track of things
-first_reading = True
 status = 'ON'
 turned_off = False
 consecutive_triggers = 0  # count of number of consecutive trigger alarms
 last_consecutive_trigger_break = 0.
 
 
-def calibrate(ser):
+def calibrate():
+    """ takes 10 readings and averages them to get a base reading
+        return base, variance, time_last_calib """
 
     print("recalibrating..")
 
@@ -114,6 +96,7 @@ def calibrate(ser):
 
 
 def play_random_local_wave_file():
+    """ plays random wave file in audio dir"""
     wav_files = [f for f in listdir('audio') if isfile(join('audio',f)) ]
     # because random works better on a larger list of items:
     for i in range(0,3):
@@ -122,6 +105,8 @@ def play_random_local_wave_file():
 
 
 def get_serial_reading():
+    global ser
+    """ gets serial reading and flushes input first"""
     ser.flushInput()  # attempt to keep commands from stacking up, always get latest reading
     return (ser.readline())
 
@@ -138,7 +123,7 @@ def status_break():
 
         if status[0:2] == 'CA':
             # this means recalibrate now:
-            base, variance, time_last_calib = calibrate(ser)
+            base, variance, time_last_calib = calibrate()
             update_status('ON')  # change the status back to on
             return True
 
@@ -174,7 +159,7 @@ def consecutive_trigger_break():
     if not last_consecutive_trigger_break:
         # so far we have not stopped alarms with the consecutive_trigger_break flag
         # let's recalibrate and do that now
-        base, variance, time_last_calib = calibrate(ser)
+        base, variance, time_last_calib = calibrate()
         last_consecutive_trigger_break = timenow
         logging.info(" setting consecutive_trigger_break")
         return True
@@ -184,90 +169,131 @@ def consecutive_trigger_break():
             # 15 minutes have gone by since consecutive_trigger_break was set, let's turn it off
             last_consecutive_trigger_break = 0
             logging.info("turning off consecutive_trigger_break")
-            base, variance, time_last_calib = calibrate(ser)  # just in case
+            base, variance, time_last_calib = calibrate()  # just in case
             return False
         else:
             sleep(10)
             return True
 
 
-# doing initial calibration..
-logging.info("doing initial calibration..")
-base, variance, time_last_calib = calibrate(ser)
+class TriggerWemo(threading.Thread):
+    """ turns on the Wemo switch and turns it off 5 minutes later """
 
-while True:
+    def __init__(self):
+        threading.Thread.__init__(self)
 
-
-    sleep(.5)  # check the serial reading every x time
-    timenow = mktime(datetime.now().timetuple())
-
-    # always check the status.txt file before doing anything
-    if status_break():
-        logging.debug('taking status break')
-        continue
-
-    reading = get_serial_reading()
-
-    if first_reading:
-        first_reading = False
-        logging.info("hello first reading: " + reading)
-        continue
-
-    logging.debug('ok ' + str(reading) + ' ' + str(base))
-
-    # tiny movement logging (for debugging)
-    if abs(int(reading) - int(base)) > 25:
-        msg = "tiny movement reading: %s, base: %s, variance: %s, threshhold: %s" % (str(reading.strip()), str(base), str(variance), str(base-variance))
-        logging.debug(msg)
-
-    try:
-
-        if int(reading) < (base-variance): # black cats always score lower than base
-            # we haz a black cat!
-
-            consecutive_triggers += 1
-
-            if consecutive_trigger_break():
-                logging.info('hit consecutive trigger break')
-                continue
-
-            # log
-            msg = "Black cat detected! - reading: %s base: %s signma: %s - %s" % (str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
-            logging.info(msg)
-
-            # play a wav file
-            play_random_local_wave_file()
-
-            # send sms
-            if gmail_pw and (timenow-last_sms > 30):  # minimum seconds between sms alerts please!
-                last_sms = timenow
-                send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
+    def run(self):
+        logging.info("turning on Wemo light switch")
+        send_email('#ON', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+        sleep(60*3)
+        logging.info("turning off Wemo light switch")
+        send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+        sleep(15)
+        send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')  # just in case
 
 
-            # launch the wemo switch
+def main():
+
+    # some vars to keep track of things
+    first_reading = True
+
+    # send an initial test sms
+    # set up logging
+    logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=logging.INFO, format='%(asctime)s %(message)s')
+
+    if gmail_pw:
+        logging.info("sending test sms...")
+        send_sms('black cat sms alerts have begun', gmail_addy, gmail_pw, sms_recipients)
+        last_sms = mktime(datetime.now().timetuple())
+        logging.info("ok test sms worked!")
+
+    # if you want sms control...
+    sms_msg = "if you want sms control, run this in another shell: \n python fetch_status.py"
+    print(sms_msg)
+
+    # connect to the Arduino's serial port
+    # but first take a break: the arduino needs longer on startup than this does script does apparently
+    logging.info("sleeping for 15 seconds")
+    sleep(15)
+
+    # doing initial calibration..
+    logging.info("doing initial calibration..")
+    base, variance, time_last_calib = calibrate()
+
+    while True:
 
 
-            # play a mac creepy mac OSX voice - we have wav files so this is removed..
-            """
-            # pick a creepy voice at random and scare a cat with it
-            scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
-            shuffle(voices)
-            voice, phrase = [v.strip() for v in voices[0].split('en_US    #')]
-            msg = "say -r 340 -v %s %s " % (voice, scary_msg)
-            system(msg)
-            logging.info(msg)
-            """
+        sleep(.5)  # check the serial reading every x time
+        timenow = mktime(datetime.now().timetuple())
 
-        else:
+        # always check the status.txt file before doing anything
+        if status_break():
+            logging.debug('taking status break')
+            continue
 
-            consecutive_triggers = 0
+        reading = get_serial_reading()
 
-            # no cats, do we need to calibrate?
-            if timenow-time_last_calib > 60*recalibrate_freq:
-                base, variance, time_last_calib = calibrate(ser)
+        if first_reading:
+            first_reading = False
+            logging.info("hello first reading: " + reading)
+            continue
+
+        logging.debug('ok ' + str(reading) + ' ' + str(base))
+
+        # tiny movement logging (for debugging)
+        if abs(int(reading) - int(base)) > 25:
+            msg = "tiny movement reading: %s, base: %s, variance: %s, threshhold: %s" % (str(reading.strip()), str(base), str(variance), str(base-variance))
+            logging.debug(msg)
+
+        try:
+
+            if int(reading) < (base-variance): # black cats always score lower than base
+                # we haz a black cat!
+
+                consecutive_triggers += 1
+
+                if consecutive_trigger_break():
+                    logging.info('hit consecutive trigger break')
+                    continue
+
+                # log
+                msg = "Black cat detected! - reading: %s base: %s signma: %s - %s" % (str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
+                logging.info(msg)
+
+                # trigger wemo light switch
+                wemo = TriggerWemo()
+                wemo.start()
+
+                # play a wav file
+                play_random_local_wave_file()
+
+                # send sms
+                if gmail_pw and (timenow-last_sms > 30):  # minimum seconds between sms alerts please!
+                    last_sms = timenow
+                    send_sms(u'hello black cat %s' % str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
+
+                # play a mac creepy mac OSX voice - we have wav files so this is removed..
+                """
+                # pick a creepy voice at random and scare a cat with it
+                scary_msg = "Pssssst see see see see GET OUT OF HERE CAT!! Pssssst Pssssst Pssssst"
+                shuffle(voices)
+                voice, phrase = [v.strip() for v in voices[0].split('en_US    #')]
+                msg = "say -r 340 -v %s %s " % (voice, scary_msg)
+                system(msg)
+                logging.info(msg)
+                """
+
+            else:
+
+                consecutive_triggers = 0
+
+                # no cats, do we need to calibrate?
+                if timenow-time_last_calib > 60*recalibrate_freq:
+                    base, variance, time_last_calib = calibrate()
 
 
-    except ValueError:
-        logging.info('ValueError: ' + str(reading))
+        except ValueError:
+            logging.info('ValueError: ' + str(reading))
 
-
+if __name__ == "__main__":
+    main()
