@@ -4,7 +4,6 @@
 
 """
 from __future__ import print_function
-from sensor import calibrate
 from time import sleep
 import urllib2
 
