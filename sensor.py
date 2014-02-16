@@ -15,7 +15,7 @@ from os.path import isfile, join
 
 import serial
 from random import choice
-from time import strftime, mktime, sleep
+from time import strftime, mktime, sleep, localtime, time
 from datetime import datetime
 
 from confirm import confirm  # ux baby
@@ -40,7 +40,6 @@ sms_recipients = secrets['sms_recipients']
 gmail_pw = secrets['gmail_pw']  # gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
 consecutive_triggers = 0  # count of number of consecutive trigger alarms
 
-
 # connect to the Arduino's serial port (see settings.py)
 # but first take a break:
 # it seemed the arduino needed longer to startup than this script takes to get to here..
@@ -51,23 +50,19 @@ print("sleeping for 15 seconds to give Arduino time to boot up.")
 sleep(15)
 
 try:
-    serial_port = '/dev/ttyACM1' # this is a raspberry pi!
-except serial.SerialException:
-    # oops try the other one
-    try:
-        serial_port = '/dev/ttyACM0' # this is a raspberry pi!
-    except serial.SerialException:
-        # this must be an aging macbook air
-        serial_port = '/dev/tty.usbmodemfd121'
-
-try:
+    serial_port = '/dev/ttyACM1'
     ser = serial.Serial(serial_port, 9600)
-except serial.serialutil.SerialException:
-    if confirm("Please plug in the Arduino, say Y when that's done: "):
-        logging.error("Arduino does not seem to be connected")
+except serial.SerialException:
+    try:
+        serial_port = '/dev/ttyACM0'
         ser = serial.Serial(serial_port, 9600)
+    except serial.SerialException:
+        msg = 'could not connect to either serial port'
+        logging.error(msg)
+        print(msg)
+        sys.exit()
 
-# some vars to keep track of things
+# some global vars to keep track of things
 status = 'ON'
 turned_off = False
 last_consecutive_trigger_break = 0.
@@ -222,18 +217,22 @@ class TriggerWemo(threading.Thread):
         send_email('#ON', gmail_addy, gmail_pw, 'trigger@ifttt.com')
         logging.info("turning on Wemo light switch and roomba remote switch")
 
-        # trigger the roomba
-        roomba_active = False
+        # trigger the roomba?
+        roomba_on = False  # if this becomes true then after sleeping we turn it back off
         timenow = mktime(datetime.now().timetuple())
-        if timenow-last_roomba_trigger > 60*60*6:  # allow 6 hours to re charge
-            # launch!
-            send_email('#ON_ROOMBA', gmail_addy, gmail_pw, 'trigger@ifttt.com')
-            send_sms('Roomba launched at ' + str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
-            last_roomba_trigger = timenow
-            logging.debug('last_roomba_trigger: ' + str(last_roomba_trigger))
-            roomba_active = True
+        # to launch the roomba it must have been recharging at least 6 hours (WAG)
+        # and refrain from launching roomba bt 11 am and 1pm because there are
+        # too many false alarms during those hours
+        if  timenow-last_roomba_trigger > 60*60*6 and localtime(time()).tm_hour not in [11,12,13]:
+                # launch!
+                send_email('#ON_ROOMBA', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+                send_sms('Roomba launched at ' + str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
+                logging.ingo('roomba launched')
+                last_roomba_trigger = timenow
+                logging.debug('last_roomba_trigger: ' + str(last_roomba_trigger))
+                roomba_on = True
         else:
-            logging.info('not launching roomba, ' + str(60*60*6 - (timenow-last_roomba_trigger)) + ' seconds left to charge' )
+            logging.info('skipping roomba launch - ' + str(60*60*6 - (timenow-last_roomba_trigger)/60/60) + ' hours left to charge' )
 
         # this is how long the switch stays on:
         sleep(60*3)
@@ -242,7 +241,7 @@ class TriggerWemo(threading.Thread):
         for i in range(0,2):  # twice just to be extra cautious and make sure it gets turned off for realzies
             logging.info("turning off Wemo light switch and roomba")
             send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')
-            if roomba_active:
+            if roomba_on:
                 send_email('#OFF_ROOMBA', gmail_addy, gmail_pw, 'trigger@ifttt.com')
             sleep(15)
 
