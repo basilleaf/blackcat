@@ -23,11 +23,13 @@ from send_email import send_sms, send_email
 from update_status import update_status
 from secrets import secrets
 
-from settings import serial_port
 import logging
 import threading
 
-LOG_LEVEL = logging.DEBUG
+# set up logging
+LOG_LEVEL = logging.INFO
+print('setting up logging ' + str(LOG_LEVEL))
+logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=LOG_LEVEL, format='%(asctime)s %(message)s')
 
 resident_cat_variance_ratio = 1.5
 recalibrate_freq = 15  # minutes
@@ -38,12 +40,26 @@ sms_recipients = secrets['sms_recipients']
 gmail_pw = secrets['gmail_pw']  # gmail_pw = getpass.getpass("if you want a text of each reading, enter your gmail password (or enter to skip): ")
 consecutive_triggers = 0  # count of number of consecutive trigger alarms
 
+
 # connect to the Arduino's serial port (see settings.py)
 # but first take a break:
 # it seemed the arduino needed longer to startup than this script takes to get to here..
 # todo: may no longer be the case?
+
 logging.info("sleeping for 15 seconds to give Arduino time to boot up.")
+print("sleeping for 15 seconds to give Arduino time to boot up.")
 sleep(15)
+
+try:
+    serial_port = '/dev/ttyACM1' # this is a raspberry pi!
+except serial.SerialException:
+    # oops try the other one
+    try:
+        serial_port = '/dev/ttyACM0' # this is a raspberry pi!
+    except serial.SerialException:
+        # this must be an aging macbook air
+        serial_port = '/dev/tty.usbmodemfd121'
+
 try:
     ser = serial.Serial(serial_port, 9600)
 except serial.serialutil.SerialException:
@@ -55,6 +71,7 @@ except serial.serialutil.SerialException:
 status = 'ON'
 turned_off = False
 last_consecutive_trigger_break = 0.
+last_roomba_trigger = 0
 
 
 def calibrate():
@@ -68,11 +85,11 @@ def calibrate():
     error_count = 0
     while len(latest_readings) < 11:
         reading = get_serial_reading()
-
         # can this reading be cast as int?
         try:
             int(reading)
         except ValueError:
+            print('value error')
             # how many time will we let this trip?
             error_count += 1
             if error_count > 5:
@@ -80,12 +97,13 @@ def calibrate():
                 sys.exit()
 
         if int(reading) > 3000:
+            print('reading is huge!')
             logging.info('got large calib reading ' + str(reading.strip()) + ' throwing it away ')
             continue  # there is an initial spike that is really 2 numbers coming accross as 1
 
         latest_readings.append(int(reading))
 
-    logging.info(latest_readings)
+
     # and recalculate base and variance
     base = int(sum(latest_readings)/len(latest_readings))
 
@@ -97,8 +115,8 @@ def calibrate():
 
     time_last_calib = mktime(datetime.now().timetuple())
 
-    logging.info("recalibrated " + datetime.fromtimestamp(mktime(datetime.now().timetuple())).strftime('%Y-%m-%d %H:%M:%S').strip())
-    logging.info('base: ' + str(base) + ' ' + 'variance: ' + str(variance))
+    logging.info('recalibrated base: ' + str(base) + ' ' + 'variance: ' + str(variance))
+    logging.debug(latest_readings)
 
     return (base, variance, time_last_calib)
 
@@ -116,7 +134,8 @@ def get_serial_reading():
     """ gets latest reading from the serial buffer (flushes buffer before reading"""
     global ser
     ser.flushInput()  # attempt to keep commands from stacking up, always get latest reading
-    return (ser.readline())
+    reading = ser.readline()
+    return (reading)
 
 
 def status_break():
@@ -138,17 +157,18 @@ def status_break():
             # this means recalibrate now:
             base, variance, time_last_calib = calibrate()
             update_status('ON')  # change the status back to on
+            logging.debug('status = CA, recalibrating')
             return True
 
         elif status == 'OFF':
-            logging.info("going off for 5 minutes")
+            logging.info("status = OFF - going off for 5 minutes")
             turned_off = True
             sleep(5*60)  # sleep n minutes then continue
             return True
 
     if turned_off == True:
         # status is on, but this was turned off before, so post a log msga
-        logging.info("ok back on")
+        logging.info("back on")
         turned_off = False
         return False  # we are back on
 
@@ -189,21 +209,42 @@ def consecutive_trigger_break():
 
 
 class TriggerWemo(threading.Thread):
-    """turns on a Wemo switch (via gmail and IFTTT) and turns it off 5 minutes later.  """
+    """turns on 2 Wemo switches (via gmail and IFTTT) and turns them off 5 minutes later.
+       One wemo turns on a light and the other turns on an Arduino that emulates a wemo remote"""
 
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
-        logging.info("turning on Wemo light switch")
-        send_email('#ON', gmail_addy, gmail_pw, 'trigger@ifttt.com')
-        sleep(60*3)
-        logging.info("turning off Wemo light switch")
-        send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+        global last_roomba_trigger
 
-        # just to be extra cautious and make sure it gets turned off for realzies
-        sleep(15)
-        send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')  # just in case
+        # trigger light switch wemo and turn off after a few minutes
+        send_email('#ON', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+        logging.info("turning on Wemo light switch and roomba remote switch")
+
+        # trigger the roomba
+        roomba_active = False
+        timenow = mktime(datetime.now().timetuple())
+        if timenow-last_roomba_trigger > 60*60*6:  # allow 6 hours to re charge
+            # launch!
+            send_email('#ON_ROOMBA', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+            send_sms('Roomba launched at ' + str(strftime("%X").strip()), gmail_addy, gmail_pw, sms_recipients)
+            last_roomba_trigger = timenow
+            logging.debug('last_roomba_trigger: ' + str(last_roomba_trigger))
+            roomba_active = True
+        else:
+            logging.info('not launching roomba, ' + str(60*60*6 - (timenow-last_roomba_trigger)) + ' seconds left to charge' )
+
+        # this is how long the switch stays on:
+        sleep(60*3)
+
+        # now turn them off
+        for i in range(0,2):  # twice just to be extra cautious and make sure it gets turned off for realzies
+            logging.info("turning off Wemo light switch and roomba")
+            send_email('#OFF', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+            if roomba_active:
+                send_email('#OFF_ROOMBA', gmail_addy, gmail_pw, 'trigger@ifttt.com')
+            sleep(15)
 
 
 def main():
@@ -211,11 +252,10 @@ def main():
 
     global consecutive_triggers
 
+    logging.error('hello main')
+
     # some vars to keep track of things
     first_reading = True
-
-    # set up logging
-    logging.basicConfig(filename='/home/pi/blackcat/logs/black_cat_sightings.log',level=LOG_LEVEL, format='%(asctime)s %(message)s')
 
     # send an initial test sms
     if gmail_pw:
@@ -246,7 +286,7 @@ def main():
 
         if first_reading:
             first_reading = False
-            logging.debug("hello first reading: " + reading)
+            logging.info("hello first reading: " + reading)
             continue
 
         # tiny movement logging (for debugging)
@@ -271,12 +311,13 @@ def main():
                 msg = "Black cat detected! - reading: %s base: %s signma: %s - %s" % (str(reading).strip(), str(base).strip(), str(variance).strip(), strftime("%a, %d %b %Y").strip())
                 logging.info(msg)
 
-                # trigger wemo light switch
+                # trigger wemo actions
                 wemo = TriggerWemo()
                 wemo.start()
 
                 # play a wav file
                 play_random_local_wave_file()
+
 
                 # send sms
                 # todo: move this to it's own thread and do a sleep(30) init
