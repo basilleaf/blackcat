@@ -1,6 +1,7 @@
 """
-    This watches the remote status file (on s3) and updates a local status file
-    it runs separately if you want sms control you have to run it
+    watches the remote status file (on s3) and updates a local status file
+    infinite loop like a deamon
+    if you want sms control this must be running
 
 """
 from __future__ import print_function

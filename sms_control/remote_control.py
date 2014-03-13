@@ -1,10 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 """
-This is a Flask app that runs on Heroku
-It uses Twilio to accept sms commands, and updates a file
-on amazon s3 with the status you send to it.
-
+This is a Flask app on Heroku
+It uses Twilio to accept sms commands and updates a status.txt file on s3.
 """
 from __future__ import print_function
 import os
