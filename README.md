@@ -3,8 +3,7 @@
 Detect if black cat is coming through the cat door, and scare eem! 
 - plays scary sounding .wav file (or can just play creepy Mac voice) 
 - Turns on a Wemo switch (and turns it off a few minutes later) 
-- remote sms control (on, off, calibrate) via Twilio/Flask/S3 app running on Heroku (remote_control.py)
-
+- remote sms control (on, off, calibrate) via Twilio/Flask app running on Heroku
 
 run it: 
     
