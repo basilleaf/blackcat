@@ -2,7 +2,7 @@
 
 Detect if black cat is coming through the cat door, and scare eem! 
 - plays scary sounding .wav file (or can just play creepy Mac voice) 
-- Turns on a Wemo switch (and turns it off a few minutes later) 
+- Turns on multiple Wemo switches (and turns them off a few minutes later) launches roomba! 
 - remote sms control (on, off, calibrate) via Twilio/Flask app running on Heroku
 
 run it: 
