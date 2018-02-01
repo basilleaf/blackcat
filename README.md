@@ -35,6 +35,8 @@ run it:
 
 We have 2 black cats that enter our kitchen and sometimes roam around the house, have some tasty food, and take naps. They also freak the hell out of our 2 orange tabbys.
 
+<img src = "http://24.media.tumblr.com/e724ec40de93e65324ed1828df68da07/tumblr_mzyynrWrjc1qzaxi1o1_1280.jpg">
+
 Turns out you can detect a black cat against a white wall pretty accurately with a photocell and some ambient light (accurate meaning near zero false alarms when reading the orange cats). Our orange/buff cats often reflect back a number higher than the reading for ambient light, the dark cats always reflect back a lower number.
 
 This currently runs via cron (@reboot) on a Raspberry pi with Arduino connected via usb cable.
@@ -47,4 +49,3 @@ Here is the most frequent offender "Big Steve" making a hasty retreat. The senso
     tail -f black_cat_sightings.log
 
 
-<img src = "http://24.media.tumblr.com/e724ec40de93e65324ed1828df68da07/tumblr_mzyynrWrjc1qzaxi1o1_1280.jpg">
