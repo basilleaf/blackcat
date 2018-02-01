@@ -41,7 +41,7 @@ This currently runs via cron (@reboot) on a Raspberry pi with Arduino connected 
 
 Here is the most frequent offender "Big Steve" making a hasty retreat. The sensor is embedded inside a small black ring box to the left of the cat flap:
 
-<img src = "https://dl.dropboxusercontent.com/u/22391580/big_steve_gets_yelled_at.jpg">
+<img src = "big_steve_gets_yelled_at.jpg">
 
 
     tail -f black_cat_sightings.log
